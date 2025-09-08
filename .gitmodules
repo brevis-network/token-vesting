@@ -1,0 +1,14 @@
+[submodule "contracts/lib/forge-std"]
+	path = contracts/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "contracts/lib/openzeppelin"]
+	path = contracts/lib/openzeppelin
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+	branch = release-v5.3
+[submodule "contracts/lib/openzeppelin-v4"]
+	path = contracts/lib/openzeppelin-v4
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+	branch = release-v4.9
+[submodule "contracts/lib/security"]
+	path = contracts/lib/security
+	url = https://github.com/brevis-network/security-contracts
