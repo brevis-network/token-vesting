@@ -9,6 +9,22 @@ import "./TokenAllocation.sol";
  * @title TokenVesting
  * @dev A token vesting contract that allows for flexible vesting schedules with initial unlocking
  * and linear vesting over time. Supports role-based access control and emergency pause functionality.
+ *
+ * Operational sequence and assumptions:
+ * - This contract is intended for a fully trusted, standard ERC20 token (no fees, no rebasing).
+ * - Deployment: `token`, `UPDATER_ROLE`, and `PAUSER_ROLE` may be provided at construction time.
+ *   Passing zero addresses is allowed, and the owner may set the addresses later.
+ * - Configuration before user claims:
+ *   1) Owner sets vesting parameters via {setVestingParameters} (init bps, start time, duration).
+ *   2) Updater sets/updates user allocations via {setUserAllocations}.
+ *   3) Lock allocations via {lockAllocations}. After locking:
+ *      - {setUserAllocations}, {setVestingParameters}, and {setToken} are no longer callable.
+ *      - Users can start calling {release} once vesting has started.
+ *   4) Fund the contract with the vesting token so it can cover upcoming releases (not enforced on-chain).
+ *
+ * - Claiming: Users call {release} when not paused. It transfers the currently vested, unreleased amount.
+ * - Pausing/Emergency: Accounts with PAUSER_ROLE can pause/unpause; when paused, {release} is disabled,
+ *   and the owner can rescue the vesting token via {sweepTokens}.
  * @author Brevis Network
  */
 contract TokenVesting is TokenAllocation {
@@ -139,6 +155,18 @@ contract TokenVesting is TokenAllocation {
         returns (uint256 allocationAmount, uint256 releasedAmount, uint256 vestedAmount, uint256 releasableAmount)
     {
         return (allocations[_user], released[_user], vestingSchedule(_user), releasable(_user));
+    }
+
+    /**
+     * @notice Returns the signed gap between contract balance and aggregate releasable now
+     * @dev fundingGap = token.balanceOf(this) - (vestingSchedule(totalAllocation, now) - totalReleased).
+     *      Positive value means surplus (enough to satisfy all immediate releases);
+     *      negative means deficit (top-up needed to avoid reverts).
+     */
+    function fundingGap() public view returns (int256) {
+        uint256 totalReleasable = vestingSchedule(totalAllocation, block.timestamp) - totalReleased;
+        uint256 balance = address(token) == address(0) ? 0 : token.balanceOf(address(this));
+        return int256(balance) - int256(totalReleasable);
     }
 
     /**
