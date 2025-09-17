@@ -60,11 +60,26 @@ contract TokenVesting is TokenAllocation {
 
     /**
      * @notice Releases all currently vested tokens for the caller
-     * @dev Calculates the releasable amount and transfers tokens to the caller
      */
     function release() external whenNotPaused {
+        _release(msg.sender);
+    }
+
+    /**
+     * @notice Releases all currently vested tokens for a specified user
+     * @param user Address of the user to release tokens for
+     */
+    function release(address user) external whenNotPaused {
+        _release(user);
+    }
+
+    /**
+     * @notice Internal function to handle the release of vested tokens to a user
+     * @dev Calculates the releasable amount and transfers tokens to the caller
+     * @param user Address of the user to release tokens for
+     */
+    function _release(address user) internal {
         require(allocationLocked, "Allocations are not locked");
-        address user = msg.sender;
         uint256 amount = releasable(user);
         require(amount > 0, "No tokens to release");
 
