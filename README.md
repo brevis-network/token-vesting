@@ -5,9 +5,9 @@ Foundry-based Solidity contracts for ERC20 token allocation and time-based vesti
 ## Repository Layout
 ```
 src/        Core contracts (TokenAllocation, TokenVesting)
-script/     Deployment scripts and `.env.example`
-test/       Foundry tests
 lib/        Submodules (forge-std, openzeppelin, openzeppelin-v4, security)
+test/       Foundry tests
+script/     Deployment scripts and `.env.example`
 ```
 
 ## Vesting Model
@@ -19,12 +19,13 @@ Vested amount `V(t)`:
 - `A` for `t >= T0 + D`
 - Otherwise `V(t) = A*I/10000 + (A - A*I/10000) * (t - T0) / D`
 
-Releasable = `V(t) - released[user]`.
+Releasable = `V(t) - released[beneficiary]`.
 
 ## Operational Flow
 1. Deploy contract with token, updater, pauser (optional zero addresses allowed, then set later by owner).
 2. (Owner) `setVestingParameters(initBps, startTime, duration)` – must be before locking.
-3. (Updater) `setUserAllocations([...])` – batch set or update allocations while not locked.
+3. (Updater) `setAllocations([...])` – batch set or update allocations while not locked.
 4. (Owner or Updater) `lockAllocations()` – freezes allocations and parameters.
 5. Fund the contract. Use `fundingGap()` to check surplus/deficit vs aggregate releasable.
-6. Users call `release()` (or anyone calls `release(user)`) after `startTime` as vesting accrues.
+6. Beneficiaries call `release()` (or updater calls `release(beneficiary)`) after `startTime` as vesting accrues.
+7. View helpers: `beneficiaryVestingInfo(beneficiary)`, `releasable(beneficiary)`, `fundingGap()`.

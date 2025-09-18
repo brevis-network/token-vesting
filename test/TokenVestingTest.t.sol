@@ -22,27 +22,27 @@ contract TokenVestingTest is Test {
     address public owner;
     address public updater;
     address public pauser;
-    address public user1;
-    address public user2;
-    address public user3;
+    address public beneficiary1;
+    address public beneficiary2;
+    address public beneficiary3;
 
     uint256 public constant INIT_VESTED_BPS = 2000; // 20%
     uint256 public constant VESTING_DURATION = 365 days;
     uint256 public vestingStartTime;
 
-    event TokensReleased(address indexed user, uint256 amount);
+    event TokensReleased(address indexed beneficiary, uint256 amount);
     event VestingParametersSet(uint256 initVestedBps, uint256 vestingStartTime, uint256 vestingDuration);
     event TokenSet(address indexed token);
     event TokensSwept(address indexed to, uint256 amount);
-    event AllocationSet(address indexed user, uint256 allocation);
+    event AllocationSet(address indexed beneficiary, uint256 allocation);
 
     function setUp() public {
         owner = address(this);
         updater = makeAddr("updater");
         pauser = makeAddr("pauser");
-        user1 = makeAddr("user1");
-        user2 = makeAddr("user2");
-        user3 = makeAddr("user3");
+        beneficiary1 = makeAddr("beneficiary1");
+        beneficiary2 = makeAddr("beneficiary2");
+        beneficiary3 = makeAddr("beneficiary3");
 
         token = new MockToken();
         vesting = new TokenVesting(IERC20(token), updater, pauser);
@@ -71,18 +71,18 @@ contract TokenVestingTest is Test {
 
     // ============ Allocation Setup Helper ============
     function _setupAllocations() internal {
-        address[] memory users = new address[](3);
+        address[] memory beneficiaries = new address[](3);
         uint256[] memory allocations = new uint256[](3);
 
-        users[0] = user1;
-        users[1] = user2;
-        users[2] = user3;
+        beneficiaries[0] = beneficiary1;
+        beneficiaries[1] = beneficiary2;
+        beneficiaries[2] = beneficiary3;
         allocations[0] = 10000e18;
         allocations[1] = 20000e18;
         allocations[2] = 30000e18;
 
         vm.prank(updater);
-        vesting.setUserAllocations(users, allocations);
+        vesting.setAllocations(beneficiaries, allocations);
 
         vm.prank(updater);
         vesting.lockAllocations();
@@ -107,7 +107,7 @@ contract TokenVestingTest is Test {
 
     function test_SetVestingParameters_RevertWhen_NotOwner() public {
         vm.expectRevert();
-        vm.prank(user1);
+        vm.prank(beneficiary1);
         vesting.setVestingParameters(1000, block.timestamp + 100, 365 days);
     }
 
@@ -153,7 +153,7 @@ contract TokenVestingTest is Test {
         MockToken newToken = new MockToken();
 
         vm.expectRevert();
-        vm.prank(user1);
+        vm.prank(beneficiary1);
         newVesting.setToken(IERC20(newToken));
     }
 
@@ -243,14 +243,14 @@ contract TokenVestingTest is Test {
         newVesting.vestingSchedule(10000e18, block.timestamp);
     }
 
-    function test_VestingSchedule_UserOverloads() public {
+    function test_VestingSchedule_BeneficiaryOverloads() public {
         _setupAllocations();
 
-        uint256 currentVested = vesting.vestingSchedule(user1);
-        uint256 timestampVested = vesting.vestingSchedule(user1, block.timestamp);
+        uint256 currentVested = vesting.vestingSchedule(beneficiary1);
+        uint256 timestampVested = vesting.vestingSchedule(beneficiary1, block.timestamp);
 
         assertEq(currentVested, timestampVested);
-        assertEq(currentVested, vesting.vestingSchedule(vesting.allocations(user1), block.timestamp));
+        assertEq(currentVested, vesting.vestingSchedule(vesting.allocations(beneficiary1), block.timestamp));
     }
 
     // ============ release Tests ============
@@ -262,7 +262,7 @@ contract TokenVestingTest is Test {
         vm.warp(beforeStart);
 
         vm.expectRevert("No tokens to release");
-        vm.prank(user1);
+        vm.prank(beneficiary1);
         vesting.release();
     }
 
@@ -270,18 +270,18 @@ contract TokenVestingTest is Test {
         _setupAllocations();
         vm.warp(vestingStartTime);
 
-        uint256 allocation = vesting.allocations(user1);
+        uint256 allocation = vesting.allocations(beneficiary1);
         uint256 expectedRelease = (allocation * INIT_VESTED_BPS) / vesting.BPS_DENOMINATOR();
-        uint256 balanceBefore = token.balanceOf(user1);
+        uint256 balanceBefore = token.balanceOf(beneficiary1);
 
         vm.expectEmit(true, false, false, true);
-        emit TokensReleased(user1, expectedRelease);
+        emit TokensReleased(beneficiary1, expectedRelease);
 
-        vm.prank(user1);
+        vm.prank(beneficiary1);
         vesting.release();
 
-        assertEq(token.balanceOf(user1), balanceBefore + expectedRelease);
-        assertEq(vesting.released(user1), expectedRelease);
+        assertEq(token.balanceOf(beneficiary1), balanceBefore + expectedRelease);
+        assertEq(vesting.released(beneficiary1), expectedRelease);
         assertEq(vesting.totalReleased(), expectedRelease);
     }
 
@@ -290,14 +290,14 @@ contract TokenVestingTest is Test {
         uint256 midTime = vestingStartTime + (VESTING_DURATION / 4); // 25% through
         vm.warp(midTime);
 
-        uint256 expectedVested = vesting.vestingSchedule(user1, midTime);
-        uint256 balanceBefore = token.balanceOf(user1);
+        uint256 expectedVested = vesting.vestingSchedule(beneficiary1, midTime);
+        uint256 balanceBefore = token.balanceOf(beneficiary1);
 
-        vm.prank(user1);
+        vm.prank(beneficiary1);
         vesting.release();
 
-        assertEq(token.balanceOf(user1), balanceBefore + expectedVested);
-        assertEq(vesting.released(user1), expectedVested);
+        assertEq(token.balanceOf(beneficiary1), balanceBefore + expectedVested);
+        assertEq(vesting.released(beneficiary1), expectedVested);
     }
 
     function test_Release_MultipleReleases() public {
@@ -305,62 +305,62 @@ contract TokenVestingTest is Test {
         vm.warp(vestingStartTime);
 
         // First release
-        vm.prank(user1);
+        vm.prank(beneficiary1);
         vesting.release();
-        uint256 firstRelease = vesting.released(user1);
+        uint256 firstRelease = vesting.released(beneficiary1);
 
         // Move time forward and release again
         vm.warp(vestingStartTime + (VESTING_DURATION / 2));
-        uint256 balanceBefore = token.balanceOf(user1);
+        uint256 balanceBefore = token.balanceOf(beneficiary1);
 
-        vm.prank(user1);
+        vm.prank(beneficiary1);
         vesting.release();
 
-        uint256 totalReleased = vesting.released(user1);
+        uint256 totalReleased = vesting.released(beneficiary1);
         assertTrue(totalReleased > firstRelease);
-        assertEq(token.balanceOf(user1), balanceBefore + (totalReleased - firstRelease));
+        assertEq(token.balanceOf(beneficiary1), balanceBefore + (totalReleased - firstRelease));
     }
 
     function test_Release_FullVesting() public {
         _setupAllocations();
         vm.warp(vestingStartTime + VESTING_DURATION);
 
-        uint256 allocation = vesting.allocations(user1);
-        uint256 balanceBefore = token.balanceOf(user1);
+        uint256 allocation = vesting.allocations(beneficiary1);
+        uint256 balanceBefore = token.balanceOf(beneficiary1);
 
-        vm.prank(user1);
+        vm.prank(beneficiary1);
         vesting.release();
 
-        assertEq(token.balanceOf(user1), balanceBefore + allocation);
-        assertEq(vesting.released(user1), allocation);
+        assertEq(token.balanceOf(beneficiary1), balanceBefore + allocation);
+        assertEq(vesting.released(beneficiary1), allocation);
     }
 
     function test_Release_NoDoubleRelease() public {
         _setupAllocations();
         vm.warp(vestingStartTime + VESTING_DURATION);
 
-        vm.prank(user1);
+        vm.prank(beneficiary1);
         vesting.release();
 
         // Try to release again
         vm.expectRevert("No tokens to release");
-        vm.prank(user1);
+        vm.prank(beneficiary1);
         vesting.release();
     }
 
     function test_Release_RevertWhen_AllocationsNotLocked() public {
-        address[] memory users = new address[](1);
+        address[] memory beneficiaries = new address[](1);
         uint256[] memory allocations = new uint256[](1);
-        users[0] = user1;
+        beneficiaries[0] = beneficiary1;
         allocations[0] = 10000e18;
 
         vm.prank(updater);
-        vesting.setUserAllocations(users, allocations);
+        vesting.setAllocations(beneficiaries, allocations);
 
         vm.warp(vestingStartTime);
 
         vm.expectRevert("Allocations are not locked");
-        vm.prank(user1);
+        vm.prank(beneficiary1);
         vesting.release();
     }
 
@@ -372,7 +372,7 @@ contract TokenVestingTest is Test {
         vesting.pause();
 
         vm.expectRevert(); // EnforcedPause() in newer OpenZeppelin versions
-        vm.prank(user1);
+        vm.prank(beneficiary1);
         vesting.release();
     }
 
@@ -380,10 +380,10 @@ contract TokenVestingTest is Test {
         _setupAllocations();
         vm.warp(vestingStartTime);
 
-        address userWithNoAllocation = makeAddr("noAllocation");
+        address noAllocationBeneficiary = makeAddr("noAllocation");
 
         vm.expectRevert("No tokens to release");
-        vm.prank(userWithNoAllocation);
+        vm.prank(noAllocationBeneficiary);
         vesting.release();
     }
 
@@ -393,9 +393,9 @@ contract TokenVestingTest is Test {
         _setupAllocations();
         vm.warp(vestingStartTime + (VESTING_DURATION / 3));
 
-        uint256 releasable = vesting.releasable(user1);
-        uint256 vestingSchedule = vesting.vestingSchedule(user1);
-        uint256 released = vesting.released(user1);
+        uint256 releasable = vesting.releasable(beneficiary1);
+        uint256 vestingSchedule = vesting.vestingSchedule(beneficiary1);
+        uint256 released = vesting.released(beneficiary1);
 
         assertEq(releasable, vestingSchedule - released);
     }
@@ -405,15 +405,15 @@ contract TokenVestingTest is Test {
         vm.warp(vestingStartTime);
 
         // Release initial amount
-        vm.prank(user1);
+        vm.prank(beneficiary1);
         vesting.release();
 
         // Move time forward
         vm.warp(vestingStartTime + (VESTING_DURATION / 2));
 
-        uint256 releasable = vesting.releasable(user1);
-        uint256 vestingSchedule = vesting.vestingSchedule(user1);
-        uint256 released = vesting.released(user1);
+        uint256 releasable = vesting.releasable(beneficiary1);
+        uint256 vestingSchedule = vesting.vestingSchedule(beneficiary1);
+        uint256 released = vesting.released(beneficiary1);
 
         assertEq(releasable, vestingSchedule - released);
         assertTrue(releasable > 0);
@@ -426,15 +426,15 @@ contract TokenVestingTest is Test {
         vesting.pause();
 
         uint256 sweepAmount = 1000e18;
-        uint256 balanceBefore = token.balanceOf(user1);
+        uint256 balanceBefore = token.balanceOf(beneficiary1);
         uint256 contractBalanceBefore = token.balanceOf(address(vesting));
 
         vm.expectEmit(true, false, false, true);
-        emit TokensSwept(user1, sweepAmount);
+        emit TokensSwept(beneficiary1, sweepAmount);
 
-        vesting.sweepTokens(user1, sweepAmount);
+        vesting.sweepTokens(beneficiary1, sweepAmount);
 
-        assertEq(token.balanceOf(user1), balanceBefore + sweepAmount);
+        assertEq(token.balanceOf(beneficiary1), balanceBefore + sweepAmount);
         assertEq(token.balanceOf(address(vesting)), contractBalanceBefore - sweepAmount);
     }
 
@@ -443,13 +443,13 @@ contract TokenVestingTest is Test {
         vesting.pause();
 
         vm.expectRevert();
-        vm.prank(user1);
-        vesting.sweepTokens(user2, 1000e18);
+        vm.prank(beneficiary1);
+        vesting.sweepTokens(beneficiary2, 1000e18);
     }
 
     function test_SweepTokens_RevertWhen_NotPaused() public {
         vm.expectRevert(); // ExpectedPause() in newer OpenZeppelin versions
-        vesting.sweepTokens(user1, 1000e18);
+        vesting.sweepTokens(beneficiary1, 1000e18);
     }
 
     function test_SweepTokens_RevertWhen_InvalidRecipient() public {
@@ -465,7 +465,7 @@ contract TokenVestingTest is Test {
         vesting.pause();
 
         vm.expectRevert("amount must be greater than 0");
-        vesting.sweepTokens(user1, 0);
+        vesting.sweepTokens(beneficiary1, 0);
     }
 
     function test_SweepTokens_RevertWhen_InsufficientBalance() public {
@@ -475,7 +475,7 @@ contract TokenVestingTest is Test {
         uint256 contractBalance = token.balanceOf(address(vesting));
 
         vm.expectRevert("insufficient balance");
-        vesting.sweepTokens(user1, contractBalance + 1);
+        vesting.sweepTokens(beneficiary1, contractBalance + 1);
     }
 
     // ============ Integration Tests ============
@@ -505,13 +505,13 @@ contract TokenVestingTest is Test {
         uint256 releaseTime = vestingStartTime + timeElapsed;
         vm.warp(releaseTime);
 
-        uint256 releasableBefore = vesting.releasable(user1);
+        uint256 releasableBefore = vesting.releasable(beneficiary1);
         if (releasableBefore > 0) {
-            vm.prank(user1);
+            vm.prank(beneficiary1);
             vesting.release();
 
-            assertEq(vesting.releasable(user1), 0);
-            assertEq(vesting.released(user1), releasableBefore);
+            assertEq(vesting.releasable(beneficiary1), 0);
+            assertEq(vesting.released(beneficiary1), releasableBefore);
         }
     }
 
@@ -522,7 +522,7 @@ contract TokenVestingTest is Test {
         vm.warp(vestingStartTime);
 
         uint256 gasBefore = gasleft();
-        vm.prank(user1);
+        vm.prank(beneficiary1);
         vesting.release();
         uint256 gasUsed = gasBefore - gasleft();
 

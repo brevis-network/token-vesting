@@ -12,40 +12,40 @@ abstract contract TokenAllocation is PauserControl {
     // 0x73e573f9566d61418a34d5de3ff49360f9c51fec37f7486551670290f6285dab
     bytes32 public constant UPDATER_ROLE = keccak256("UPDATER_ROLE");
 
-    mapping(address => uint256) public allocations; // Mapping from user address to their allocation details
-    uint256 public totalAllocation; // Total tokens allocated across all users
+    mapping(address => uint256) public allocations; // Mapping from beneficiary address to their allocation amount
+    uint256 public totalAllocation; // Total tokens allocated across all beneficiaries
 
     bool public allocationLocked; // Flag indicating whether allocations can be updated
 
-    event AllocationSet(address indexed user, uint256 allocation);
+    event AllocationSet(address indexed beneficiary, uint256 allocation);
     event AllocationsLocked();
 
     /**
-     * @notice Sets or updates allocations for multiple users in a single transaction
-     * @param _users Array of user addresses to set allocations for
-     * @param _allocations Array of allocation amounts corresponding to each user
+     * @notice Sets or updates allocations for multiple beneficiaries in a single transaction
+     * @param _beneficiaries Array of beneficiary addresses to set allocations for
+     * @param _allocations Array of allocation amounts corresponding to each beneficiary
      */
-    function setUserAllocations(address[] calldata _users, uint256[] calldata _allocations)
+    function setAllocations(address[] calldata _beneficiaries, uint256[] calldata _allocations)
         external
         whenNotPaused
         onlyRole(UPDATER_ROLE)
     {
         require(!allocationLocked, "Allocations are locked");
 
-        uint256 numUsers = _users.length;
-        require(numUsers == _allocations.length, "Mismatched input lengths");
+        uint256 numBeneficiaries = _beneficiaries.length;
+        require(numBeneficiaries == _allocations.length, "Mismatched input lengths");
 
         uint256 currentTotalAllocation = totalAllocation;
         unchecked {
-            for (uint256 i = 0; i < numUsers; ++i) {
-                address user = _users[i];
+            for (uint256 i = 0; i < numBeneficiaries; ++i) {
+                address beneficiary = _beneficiaries[i];
                 uint256 newAllocation = _allocations[i];
-                uint256 currentAllocation = allocations[user];
+                uint256 currentAllocation = allocations[beneficiary];
                 if (newAllocation != currentAllocation) {
-                    allocations[user] = newAllocation;
+                    allocations[beneficiary] = newAllocation;
                     // Safe arithmetic: update cached total
                     currentTotalAllocation = currentTotalAllocation + newAllocation - currentAllocation;
-                    emit AllocationSet(user, newAllocation);
+                    emit AllocationSet(beneficiary, newAllocation);
                 }
             }
         }

@@ -17,20 +17,20 @@ contract TokenAllocationTest is Test {
     address public owner;
     address public updater;
     address public pauser;
-    address public user1;
-    address public user2;
-    address public user3;
+    address public beneficiary1;
+    address public beneficiary2;
+    address public beneficiary3;
 
-    event AllocationSet(address indexed user, uint256 allocation);
+    event AllocationSet(address indexed beneficiary, uint256 allocation);
     event AllocationsLocked();
 
     function setUp() public {
         owner = address(this);
         updater = makeAddr("updater");
         pauser = makeAddr("pauser");
-        user1 = makeAddr("user1");
-        user2 = makeAddr("user2");
-        user3 = makeAddr("user3");
+        beneficiary1 = makeAddr("beneficiary1");
+        beneficiary2 = makeAddr("beneficiary2");
+        beneficiary3 = makeAddr("beneficiary3");
 
         allocation = new TestableTokenAllocation(updater, pauser);
     }
@@ -45,130 +45,130 @@ contract TokenAllocationTest is Test {
         assertEq(allocation.owner(), owner);
     }
 
-    // ============ setUserAllocations Tests ============
+    // ============ setAllocations Tests ============
 
-    function test_SetUserAllocations_Success() public {
-        address[] memory users = new address[](2);
+    function test_SetBeneficiaryAllocations_Success() public {
+        address[] memory beneficiaries = new address[](2);
         uint256[] memory allocations = new uint256[](2);
-        users[0] = user1;
-        users[1] = user2;
+        beneficiaries[0] = beneficiary1;
+        beneficiaries[1] = beneficiary2;
         allocations[0] = 1000e18;
         allocations[1] = 2000e18;
 
         vm.prank(updater);
-        allocation.setUserAllocations(users, allocations);
+        allocation.setAllocations(beneficiaries, allocations);
 
-        assertEq(allocation.allocations(user1), 1000e18);
-        assertEq(allocation.allocations(user2), 2000e18);
+        assertEq(allocation.allocations(beneficiary1), 1000e18);
+        assertEq(allocation.allocations(beneficiary2), 2000e18);
         assertEq(allocation.totalAllocation(), 3000e18);
     }
 
-    function test_SetUserAllocations_UpdateExisting() public {
-        address[] memory users = new address[](1);
+    function test_SetBeneficiaryAllocations_UpdateExisting() public {
+        address[] memory beneficiaries = new address[](1);
         uint256[] memory allocations = new uint256[](1);
-        users[0] = user1;
+        beneficiaries[0] = beneficiary1;
         allocations[0] = 1000e18;
 
         // Set initial allocation
         vm.prank(updater);
-        allocation.setUserAllocations(users, allocations);
+        allocation.setAllocations(beneficiaries, allocations);
 
         // Update existing allocation
         allocations[0] = 2000e18;
         vm.prank(updater);
-        allocation.setUserAllocations(users, allocations);
+        allocation.setAllocations(beneficiaries, allocations);
 
-        assertEq(allocation.allocations(user1), 2000e18);
+        assertEq(allocation.allocations(beneficiary1), 2000e18);
         assertEq(allocation.totalAllocation(), 2000e18);
     }
 
-    function test_SetUserAllocations_RemoveUser() public {
-        address[] memory users = new address[](1);
+    function test_SetBeneficiaryAllocations_RemoveBeneficiary() public {
+        address[] memory beneficiaries = new address[](1);
         uint256[] memory allocations = new uint256[](1);
-        users[0] = user1;
+        beneficiaries[0] = beneficiary1;
         allocations[0] = 1000e18;
 
         // Set initial allocation
         vm.prank(updater);
-        allocation.setUserAllocations(users, allocations);
+        allocation.setAllocations(beneficiaries, allocations);
 
-        // Remove user by setting allocation to 0
+        // Remove beneficiary by setting allocation to 0
         allocations[0] = 0;
         vm.prank(updater);
-        allocation.setUserAllocations(users, allocations);
+        allocation.setAllocations(beneficiaries, allocations);
 
-        assertEq(allocation.allocations(user1), 0);
+        assertEq(allocation.allocations(beneficiary1), 0);
         assertEq(allocation.totalAllocation(), 0);
     }
 
-    function test_SetUserAllocations_NoChangeSkipped() public {
-        address[] memory users = new address[](1);
+    function test_SetBeneficiaryAllocations_NoChangeSkipped() public {
+        address[] memory beneficiaries = new address[](1);
         uint256[] memory allocations = new uint256[](1);
-        users[0] = user1;
+        beneficiaries[0] = beneficiary1;
         allocations[0] = 1000e18;
 
         // Set initial allocation
         vm.prank(updater);
-        allocation.setUserAllocations(users, allocations);
+        allocation.setAllocations(beneficiaries, allocations);
 
         // Set same allocation again - should not emit event
         vm.recordLogs();
         vm.prank(updater);
-        allocation.setUserAllocations(users, allocations);
+        allocation.setAllocations(beneficiaries, allocations);
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
         assertEq(entries.length, 0); // No events should be emitted
     }
 
-    function test_SetUserAllocations_RevertWhen_NotUpdater() public {
-        address[] memory users = new address[](1);
+    function test_SetBeneficiaryAllocations_RevertWhen_NotUpdater() public {
+        address[] memory beneficiaries = new address[](1);
         uint256[] memory allocations = new uint256[](1);
-        users[0] = user1;
+        beneficiaries[0] = beneficiary1;
         allocations[0] = 1000e18;
 
         vm.expectRevert();
-        vm.prank(user1);
-        allocation.setUserAllocations(users, allocations);
+        vm.prank(beneficiary1);
+        allocation.setAllocations(beneficiaries, allocations);
     }
 
-    function test_SetUserAllocations_RevertWhen_AllocationsLocked() public {
+    function test_SetBeneficiaryAllocations_RevertWhen_AllocationsLocked() public {
         vm.prank(updater);
         allocation.lockAllocations();
 
-        address[] memory users = new address[](1);
+        address[] memory beneficiaries = new address[](1);
         uint256[] memory allocations = new uint256[](1);
-        users[0] = user1;
+        beneficiaries[0] = beneficiary1;
         allocations[0] = 1000e18;
 
         vm.expectRevert("Allocations are locked");
         vm.prank(updater);
-        allocation.setUserAllocations(users, allocations);
+        allocation.setAllocations(beneficiaries, allocations);
     }
 
-    function test_SetUserAllocations_RevertWhen_MismatchedLengths() public {
-        address[] memory users = new address[](1);
+    function test_SetBeneficiaryAllocations_RevertWhen_MismatchedLengths() public {
+        address[] memory beneficiaries = new address[](1);
         uint256[] memory allocations = new uint256[](2);
-        users[0] = user1;
+        beneficiaries[0] = beneficiary1;
         allocations[0] = 1000e18;
         allocations[1] = 2000e18;
 
         vm.expectRevert("Mismatched input lengths");
         vm.prank(updater);
-        allocation.setUserAllocations(users, allocations);
+        allocation.setAllocations(beneficiaries, allocations);
     }
 
-    function test_SetUserAllocations_RevertWhen_Paused() public {
+    function test_SetBeneficiaryAllocations_RevertWhen_Paused() public {
         vm.prank(pauser);
         allocation.pause();
 
-        address[] memory users = new address[](1);
+        address[] memory beneficiaries = new address[](1);
         uint256[] memory allocations = new uint256[](1);
-        users[0] = user1;
+        beneficiaries[0] = beneficiary1;
         allocations[0] = 1000e18;
 
         vm.expectRevert(); // EnforcedPause() in newer OpenZeppelin versions
         vm.prank(updater);
-        allocation.setUserAllocations(users, allocations);
+        allocation.setAllocations(beneficiaries, allocations);
     }
 
     // ============ lockAllocations Tests ============
@@ -194,7 +194,7 @@ contract TokenAllocationTest is Test {
 
     function test_LockAllocations_RevertWhen_NotAuthorized() public {
         vm.expectRevert("Not authorized");
-        vm.prank(user1);
+        vm.prank(beneficiary1);
         allocation.lockAllocations();
     }
 
@@ -209,52 +209,54 @@ contract TokenAllocationTest is Test {
 
     // ============ Fuzz Tests ============
 
-    function testFuzz_SetUserAllocations_Updates(address user, uint256 allocation1, uint256 allocation2) public {
-        vm.assume(user != address(0));
+    function testFuzz_SetBeneficiaryAllocations_Updates(address beneficiary, uint256 allocation1, uint256 allocation2)
+        public
+    {
+        vm.assume(beneficiary != address(0));
         vm.assume(allocation1 != allocation2);
 
-        address[] memory users = new address[](1);
+        address[] memory beneficiaries = new address[](1);
         uint256[] memory allocations = new uint256[](1);
-        users[0] = user;
+        beneficiaries[0] = beneficiary;
         allocations[0] = allocation1;
 
         // Set initial allocation
         vm.prank(updater);
-        allocation.setUserAllocations(users, allocations);
-        assertEq(allocation.allocations(user), allocation1);
+        allocation.setAllocations(beneficiaries, allocations);
+        assertEq(allocation.allocations(beneficiary), allocation1);
 
         // Update allocation
         allocations[0] = allocation2;
         vm.prank(updater);
-        allocation.setUserAllocations(users, allocations);
-        assertEq(allocation.allocations(user), allocation2);
+        allocation.setAllocations(beneficiaries, allocations);
+        assertEq(allocation.allocations(beneficiary), allocation2);
     }
 
     // ============ Edge Case Tests ============
 
     function test_EdgeCase_MaxUint256Allocation() public {
-        address[] memory users = new address[](1);
+        address[] memory beneficiaries = new address[](1);
         uint256[] memory allocations = new uint256[](1);
-        users[0] = user1;
+        beneficiaries[0] = beneficiary1;
         allocations[0] = type(uint256).max;
 
         vm.prank(updater);
-        allocation.setUserAllocations(users, allocations);
+        allocation.setAllocations(beneficiaries, allocations);
 
-        assertEq(allocation.allocations(user1), type(uint256).max);
+        assertEq(allocation.allocations(beneficiary1), type(uint256).max);
         assertEq(allocation.totalAllocation(), type(uint256).max);
     }
 
     function test_EdgeCase_ZeroAllocation() public {
-        address[] memory users = new address[](1);
+        address[] memory beneficiaries = new address[](1);
         uint256[] memory allocations = new uint256[](1);
-        users[0] = user1;
+        beneficiaries[0] = beneficiary1;
         allocations[0] = 0;
 
         vm.prank(updater);
-        allocation.setUserAllocations(users, allocations);
+        allocation.setAllocations(beneficiaries, allocations);
 
-        assertEq(allocation.allocations(user1), 0);
+        assertEq(allocation.allocations(beneficiary1), 0);
         assertEq(allocation.totalAllocation(), 0);
     }
 }

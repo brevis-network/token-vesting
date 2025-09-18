@@ -14,15 +14,15 @@ import "./TokenAllocation.sol";
  * - This contract is intended for a fully trusted, standard ERC20 token (no fees, no rebasing).
  * - Deployment: `token`, `UPDATER_ROLE`, and `PAUSER_ROLE` may be provided at construction time.
  *   Passing zero addresses is allowed, and the owner may set the addresses later.
- * - Configuration before user claims:
+ * - Configuration before beneficiary claims:
  *   1) Owner sets vesting parameters via {setVestingParameters} (init bps, start time, duration).
- *   2) Updater sets/updates user allocations via {setUserAllocations}.
+ *   2) Updater sets/updates beneficiary allocations via {setAllocations}.
  *   3) Lock allocations via {lockAllocations}. After locking:
- *      - {setUserAllocations}, {setVestingParameters}, and {setToken} are no longer callable.
- *      - Users can start calling {release} once vesting has started.
+ *      - {setAllocations}, {setVestingParameters}, and {setToken} are no longer callable.
+ *      - Beneficiaries can start calling {release} once vesting has started.
  *   4) Fund the contract with the vesting token so it can cover upcoming releases (not enforced on-chain).
  *
- * - Claiming: Users call {release} when not paused. It transfers the currently vested, unreleased amount.
+ * - Claiming: Beneficiaries call {release} when not paused. It transfers the currently vested, unreleased amount.
  * - Pausing/Emergency: Accounts with PAUSER_ROLE can pause/unpause; when paused, {release} is disabled,
  *   and the owner can rescue the vesting token via {sweepTokens}.
  * @author Brevis Network
@@ -35,24 +35,24 @@ contract TokenVesting is TokenAllocation {
 
     IERC20 public token; // standard (no fees/rebases) token being vested
 
-    mapping(address => uint256) public released; // Mapping from user address to their released tokens
-    uint256 public totalReleased; // Total tokens released across all users
+    mapping(address => uint256) public released; // Mapping from beneficiary address to their released tokens
+    uint256 public totalReleased; // Total tokens released across all beneficiaries
 
     uint256 public initVestedBps; // Initial vested percentage in basis points (e.g., 1000 = 10.00%)
     uint256 public vestingStartTime; // Timestamp when the vesting period starts
     uint256 public vestingDuration; // Duration of the linear vesting period in seconds
 
-    mapping(address => bool) public userPaused; // When true, the user cannot release vested tokens
+    mapping(address => bool) public beneficiaryPaused; // When true, the beneficiary cannot release vested tokens
 
-    event TokensReleased(address indexed user, uint256 amount);
+    event TokensReleased(address indexed beneficiary, uint256 amount);
     event VestingParametersSet(uint256 initVestedBps, uint256 vestingStartTime, uint256 vestingDuration);
     event TokenSet(address indexed token);
     event TokensSwept(address indexed to, uint256 amount);
-    event UserPauseSet(address indexed user, bool paused);
+    event BeneficiaryPauseSet(address indexed beneficiary, bool paused);
 
     /**
      * @param _token Address of the ERC20 token to be vested
-     * @param _updater Address that can update user allocations (granted UPDATER_ROLE)
+     * @param _updater Address that can update beneficiary allocations (granted UPDATER_ROLE)
      * @param _pauser Address that can pause/unpause the contract (granted PAUSER_ROLE)
      */
     constructor(IERC20 _token, address _updater, address _pauser) {
@@ -69,58 +69,58 @@ contract TokenVesting is TokenAllocation {
     }
 
     /**
-     * @notice Releases all currently vested tokens for a specified user
+     * @notice Releases all currently vested tokens for a specified beneficiary
      * @dev Only callable by the UPDATER_ROLE
-     * @param user Address of the user to release tokens for
+     * @param _beneficiary Address of the beneficiary to release tokens for
      */
-    function release(address user) external whenNotPaused onlyRole(UPDATER_ROLE) {
-        _release(user);
+    function release(address _beneficiary) external whenNotPaused onlyRole(UPDATER_ROLE) {
+        _release(_beneficiary);
     }
 
     /**
-     * @notice Internal function to handle the release of vested tokens to a user
+     * @notice Internal function to handle the release of vested tokens to a beneficiary
      * @dev Calculates the releasable amount and transfers tokens to the caller
-     * @param user Address of the user to release tokens for
+     * @param _beneficiary Address of the beneficiary to release tokens for
      */
-    function _release(address user) internal {
+    function _release(address _beneficiary) internal {
         require(allocationLocked, "Allocations are not locked");
-        require(!userPaused[user], "User is paused");
-        uint256 amount = releasable(user);
+        require(!beneficiaryPaused[_beneficiary], "Beneficiary is paused");
+        uint256 amount = releasable(_beneficiary);
         require(amount > 0, "No tokens to release");
 
-        released[user] += amount;
+        released[_beneficiary] += amount;
         totalReleased += amount;
 
-        token.safeTransfer(user, amount);
-        emit TokensReleased(user, amount);
+        token.safeTransfer(_beneficiary, amount);
+        emit TokensReleased(_beneficiary, amount);
     }
 
     /**
-     * @notice Calculates the amount of tokens that can be released for a user
-     * @param _user Address of the user to check
+     * @notice Calculates the amount of tokens that can be released for a beneficiary
+     * @param _beneficiary Address of the beneficiary to check
      * @return releasableAmount of tokens available for release
      */
-    function releasable(address _user) public view returns (uint256 releasableAmount) {
-        return vestingSchedule(_user) - released[_user];
+    function releasable(address _beneficiary) public view returns (uint256 releasableAmount) {
+        return vestingSchedule(_beneficiary) - released[_beneficiary];
     }
 
     /**
-     * @notice Gets the current vested amount for a user based on the current block timestamp
-     * @param _user Address of the user to check
-     * @return vestedAmount Total amount of tokens vested for the user at current time
+     * @notice Gets the current vested amount for a beneficiary based on the current block timestamp
+     * @param _beneficiary Address of the beneficiary to check
+     * @return vestedAmount Total amount of tokens vested for the beneficiary at current time
      */
-    function vestingSchedule(address _user) public view returns (uint256 vestedAmount) {
-        return vestingSchedule(_user, block.timestamp);
+    function vestingSchedule(address _beneficiary) public view returns (uint256 vestedAmount) {
+        return vestingSchedule(_beneficiary, block.timestamp);
     }
 
     /**
-     * @notice Gets the vested amount for a user at a specific timestamp
-     * @param _user Address of the user to check
+     * @notice Gets the vested amount for a beneficiary at a specific timestamp
+     * @param _beneficiary Address of the beneficiary to check
      * @param _timestamp Timestamp to calculate vesting for
-     * @return vestedAmount Total amount of tokens vested for the user at the given timestamp
+     * @return vestedAmount Total amount of tokens vested for the beneficiary at the given timestamp
      */
-    function vestingSchedule(address _user, uint256 _timestamp) public view returns (uint256 vestedAmount) {
-        return vestingSchedule(allocations[_user], _timestamp);
+    function vestingSchedule(address _beneficiary, uint256 _timestamp) public view returns (uint256 vestedAmount) {
+        return vestingSchedule(allocations[_beneficiary], _timestamp);
     }
 
     /**
@@ -162,19 +162,20 @@ contract TokenVesting is TokenAllocation {
     }
 
     /**
-     * @notice Retrieves comprehensive vesting information for a user
-     * @param _user Address of the user to query
-     * @return allocationAmount Total allocation assigned to the user
-     * @return releasedAmount Total amount of tokens already released to the user
-     * @return vestedAmount Total amount of tokens vested for the user at current time
-     * @return releasableAmount Amount of tokens currently available for release to the user
+     * @notice Retrieves comprehensive vesting information for a beneficiary
+     * @param _beneficiary Address of the beneficiary to query
+     * @return allocationAmount Total allocation assigned to the beneficiary
+     * @return releasedAmount Total amount of tokens already released to the beneficiary
+     * @return vestedAmount Total amount of tokens vested for the beneficiary at current time
+     * @return releasableAmount Amount of tokens currently available for release to the beneficiary
      */
-    function userVestingInfo(address _user)
+    function beneficiaryVestingInfo(address _beneficiary)
         external
         view
         returns (uint256 allocationAmount, uint256 releasedAmount, uint256 vestedAmount, uint256 releasableAmount)
     {
-        return (allocations[_user], released[_user], vestingSchedule(_user), releasable(_user));
+        return
+            (allocations[_beneficiary], released[_beneficiary], vestingSchedule(_beneficiary), releasable(_beneficiary));
     }
 
     /**
@@ -211,16 +212,16 @@ contract TokenVesting is TokenAllocation {
     }
 
     /**
-     * @notice Set pause state for a specific user
+     * @notice Set pause state for a specific beneficiary
      * @dev Convenience function to set arbitrary pause state in one call
-     * @param _user Address of the user
+     * @param _beneficiary Address of the beneficiary
      * @param _paused New pause state
      */
-    function setUserPaused(address _user, bool _paused) external onlyRole(PAUSER_ROLE) {
-        require(_user != address(0), "invalid user");
-        if (userPaused[_user] == _paused) return;
-        userPaused[_user] = _paused;
-        emit UserPauseSet(_user, _paused);
+    function setBeneficiaryPaused(address _beneficiary, bool _paused) external onlyRole(PAUSER_ROLE) {
+        require(_beneficiary != address(0), "invalid beneficiary");
+        if (beneficiaryPaused[_beneficiary] == _paused) return;
+        beneficiaryPaused[_beneficiary] = _paused;
+        emit BeneficiaryPauseSet(_beneficiary, _paused);
     }
 
     /**

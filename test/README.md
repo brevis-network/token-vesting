@@ -9,11 +9,9 @@ Test suite for the TokenVesting smart contract.
 
 ## Test Files
 
-- `TokenAllocationTest.t.sol`: 15 tests - Allocation logic and access control
-- `TokenVestingTest.t.sol`: 40 tests - Vesting mechanics and token release
-- `IntegrationTest.t.sol`: 6 tests - End-to-end workflow validation
-
-Total: 61 tests
+- `TokenAllocationTest.t.sol`: Allocation logic and access control
+- `TokenVestingTest.t.sol`: Vesting mechanics and token release
+- `IntegrationTest.t.sol`: End-to-end workflow validation
 
 ## Running Tests
 
@@ -37,7 +35,7 @@ forge test --match-test "testFuzz_" --fuzz-runs 1000
 ## Key Test Coverage
 
 ### Allocation Management
-- User allocation setting and updates
+- Beneficiary allocation setting and updates
 - Access control (updater/owner roles)
 - Allocation locking mechanism
 - Edge cases (zero amounts, max values)
@@ -50,7 +48,7 @@ forge test --match-test "testFuzz_" --fuzz-runs 1000
 
 ### Integration Scenarios
 - Complete allocation-to-release workflows
-- Large scale operations (1000+ users)
+- Large scale operations (1000+ beneficiaries)
 - Emergency pause/resume functionality
 - Token sweeping for excess funds
 
@@ -63,22 +61,23 @@ forge test --match-test "testFuzz_" --fuzz-runs 1000
 
 Gas costs from actual test measurements:
 
-### `setUserAllocations` Gas Cost Analysis
-- **Small batch (4 users)**: 150,076 gas = ~37,519 gas per user (high overhead)
-- **Large batch (1000 users)**: ~26,392,084 gas = ~26,392 gas per user (amortized overhead)
-- **Fixed overhead**: ~25K gas baseline + ~22K gas per user
+### Gas Cost Analysis
+#### `setAllocations` 
+- **Small batch (4 beneficiaries)**: 150,076 gas = ~37,519 gas per beneficiary (high overhead)
+- **Large batch (1000 beneficiaries)**: ~26,392,084 gas = ~26,392 gas per beneficiary (amortized overhead)
+- **Fixed overhead**: ~25K gas baseline + ~22K gas per beneficiary
 
-### Other Operations
+#### Other Operations
 - `release`: ~89K gas per release operation
 - `vestingSchedule`: ~13K gas per calculation
 
 ### How to Measure
 
 ```bash
-# See gas usage for 1000 users (shows total gas in test output)
+# See gas usage for 1000 beneficiaries (shows total gas in test output)
 forge test --match-test "test_LargeScaleAllocation" -v
 
-# To test different batch sizes, modify the numUsers variable in test_LargeScaleAllocation
+# To test different batch sizes, modify the numBeneficiaries variable in test_LargeScaleAllocation
 ```
 
 ## Critical Validations
