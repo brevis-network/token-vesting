@@ -42,10 +42,13 @@ contract TokenVesting is TokenAllocation {
     uint256 public vestingStartTime; // Timestamp when the vesting period starts
     uint256 public vestingDuration; // Duration of the linear vesting period in seconds
 
+    mapping(address => bool) public userPaused; // When true, the user cannot release vested tokens
+
     event TokensReleased(address indexed user, uint256 amount);
     event VestingParametersSet(uint256 initVestedBps, uint256 vestingStartTime, uint256 vestingDuration);
     event TokenSet(address indexed token);
     event TokensSwept(address indexed to, uint256 amount);
+    event UserPauseSet(address indexed user, bool paused);
 
     /**
      * @param _token Address of the ERC20 token to be vested
@@ -67,9 +70,10 @@ contract TokenVesting is TokenAllocation {
 
     /**
      * @notice Releases all currently vested tokens for a specified user
+     * @dev Only callable by the UPDATER_ROLE
      * @param user Address of the user to release tokens for
      */
-    function release(address user) external whenNotPaused {
+    function release(address user) external whenNotPaused onlyRole(UPDATER_ROLE) {
         _release(user);
     }
 
@@ -80,6 +84,7 @@ contract TokenVesting is TokenAllocation {
      */
     function _release(address user) internal {
         require(allocationLocked, "Allocations are not locked");
+        require(!userPaused[user], "User is paused");
         uint256 amount = releasable(user);
         require(amount > 0, "No tokens to release");
 
@@ -203,6 +208,19 @@ contract TokenVesting is TokenAllocation {
         vestingStartTime = _vestingStartTime;
         vestingDuration = _vestingDuration;
         emit VestingParametersSet(_initVestedBps, _vestingStartTime, _vestingDuration);
+    }
+
+    /**
+     * @notice Set pause state for a specific user
+     * @dev Convenience function to set arbitrary pause state in one call
+     * @param _user Address of the user
+     * @param _paused New pause state
+     */
+    function setUserPaused(address _user, bool _paused) external onlyRole(PAUSER_ROLE) {
+        require(_user != address(0), "invalid user");
+        if (userPaused[_user] == _paused) return;
+        userPaused[_user] = _paused;
+        emit UserPauseSet(_user, _paused);
     }
 
     /**
