@@ -218,8 +218,23 @@ contract TokenVesting is TokenAllocation {
     }
 
     /**
+     * @notice Allows the owner to recover any ERC20 tokens mistakenly sent to this contract
+     * @param _erc20 Address of the ERC20 token to recover
+     * @param _to Address to send the recovered tokens to
+     * @param _amount Amount of tokens to recover
+     */
+    function recoverERC20(IERC20 _erc20, address _to, uint256 _amount) external onlyOwner {
+        require(_to != address(0), "invalid recipient");
+        require(_amount > 0, "amount must be greater than 0");
+        require(address(_erc20) != address(token), "cannot recover vesting token");
+
+        require(_amount <= _erc20.balanceOf(address(this)), "insufficient balance");
+        _erc20.safeTransfer(_to, _amount);
+    }
+
+    /**
      * @notice Emergency function to sweep tokens from the contract
-     * @dev This is an emergency function to recover tokens in case of critical issues
+     * @dev This is an emergency function to recover vesting tokens in case of critical issues
      * @param _to Address to send the tokens to
      * @param _amount Amount of tokens to sweep
      */
