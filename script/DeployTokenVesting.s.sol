@@ -6,11 +6,11 @@ import {TokenVesting} from "../src/TokenVesting.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
- * forge script contracts/scripts/DeployTokenVesting.s.sol:DeployTokenVesting --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast -vv
+ * forge script script/DeployTokenVesting.s.sol:DeployTokenVesting --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast -vv
  *
- * Env example file: contracts/scripts/.env.example
+ * Env example file: script/.env.example
  * To load vars into your shell before running:
- *   set -a; source contracts/scripts/.env; set +a
+ *   set -a; source script/.env; set +a
  *
  * Env vars (optional):
  * - VESTING_TOKEN      Address of the ERC20 token (defaults to address(0))
