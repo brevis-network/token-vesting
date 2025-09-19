@@ -18,6 +18,7 @@ abstract contract TokenAllocation is PauserControl {
     bool public allocationLocked; // Flag indicating whether allocations can be updated
 
     event AllocationSet(address indexed beneficiary, uint256 allocation);
+    event TotalAllocationSet(uint256 totalAllocation);
     event AllocationsLocked();
 
     /**
@@ -51,6 +52,7 @@ abstract contract TokenAllocation is PauserControl {
         }
         // Single storage write at the end
         totalAllocation = currentTotalAllocation;
+        emit TotalAllocationSet(totalAllocation);
     }
 
     /**

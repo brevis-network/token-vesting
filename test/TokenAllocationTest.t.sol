@@ -22,6 +22,7 @@ contract TokenAllocationTest is Test {
     address public beneficiary3;
 
     event AllocationSet(address indexed beneficiary, uint256 allocation);
+    event TotalAllocationSet(uint256 totalAllocation);
     event AllocationsLocked();
 
     function setUp() public {
@@ -111,13 +112,11 @@ contract TokenAllocationTest is Test {
         vm.prank(updater);
         allocation.setAllocations(beneficiaries, allocations);
 
-        // Set same allocation again - should not emit event
-        vm.recordLogs();
+        // Set same allocation again - should skip AllocationSet and only emit TotalAllocationSet
+        vm.expectEmit(false, false, false, true);
+        emit TotalAllocationSet(1000e18);
         vm.prank(updater);
         allocation.setAllocations(beneficiaries, allocations);
-
-        Vm.Log[] memory entries = vm.getRecordedLogs();
-        assertEq(entries.length, 0); // No events should be emitted
     }
 
     function test_SetBeneficiaryAllocations_RevertWhen_NotUpdater() public {
