@@ -28,3 +28,13 @@ Vested amount `V(t)` at current time `t`:
 5. Fund the contract. Use `fundingGap()` to check surplus/deficit vs aggregate releasable.
 6. Beneficiaries call `release()` (or updater calls `release(beneficiary)`) after `startTime` as vesting accrues.
 7. View helpers: `beneficiaryVestingInfo(beneficiary)`, `releasable(beneficiary)`, `fundingGap()`.
+
+## Security Considerations
+
+### Trust model and roles
+- `owner` is a super-admin and must be tightly secured. Use a multisig or [on-chain governance](https://github.com/brevis-network/security-contracts/tree/main/src/governance).
+- `UPDATER_ROLE` updates allocations until locked; `PAUSER_ROLE` pauses operations (in vesting: can pause globally and per-beneficiary releases). Key management follows standard operational practice.
+
+### Allocation locking and mutability
+- Allocations and vesting parameters are immutable after `allocationLocked` is set (cannot be unset).
+- Operationally, finalize parameters and allocations, then lock before funding/enabling releases to avoid misconfiguration or last-minute changes.

@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./TokenAllocation.sol";
 
 /**
@@ -27,7 +28,7 @@ import "./TokenAllocation.sol";
  *   and the owner can rescue the vesting token via {sweepTokens}.
  * @author Brevis Network
  */
-contract TokenVesting is TokenAllocation {
+contract TokenVesting is TokenAllocation, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     // Denominator for basis points calculations (10000 = 100%)
@@ -82,7 +83,7 @@ contract TokenVesting is TokenAllocation {
      * @dev Calculates the releasable amount and transfers tokens to the caller
      * @param _beneficiary Address of the beneficiary to release tokens for
      */
-    function _release(address _beneficiary) internal {
+    function _release(address _beneficiary) internal nonReentrant {
         require(allocationLocked, "Allocations are not locked");
         require(!beneficiaryPaused[_beneficiary], "Beneficiary is paused");
         uint256 amount = releasable(_beneficiary);
