@@ -11,15 +11,14 @@ script/     Deployment scripts and `.env.example`
 ```
 
 ## Vesting Model
-Allocation `A` with params:
-`I = initVestedBps (<= 10000)`, `T0 = startTime`, `D = duration`, current time `t`.
+Each beneficiary follows the same schedule: at the vesting start time (`T0`), a fixed initial percentage (`P`) of their allocation (`A`) unlocks immediately, and the remainder vests linearly over the configured duration (`D`). 
 
-Vested amount `V(t)`:
-- `0` for `t < T0`
-- `A` for `t >= T0 + D`
-- Otherwise `V(t) = A*I/10000 + (A - A*I/10000) * (t - T0) / D`
+Vested amount `V(t)` at current time `t`:
+- `V(t) = 0` for `t < T0`
+- `V(t) = A` for `t >= T0 + D`
+- Otherwise `V(t) = A * P + A * (1 - P) * (t - T0) / D`
 
-Releasable = `V(t) - released[beneficiary]`.
+`releasable = V(t) - released[beneficiary]`.
 
 ## Operational Flow
 1. Deploy contract with token, updater, pauser (optional zero addresses allowed, then set later by owner).
