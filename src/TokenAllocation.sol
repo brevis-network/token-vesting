@@ -40,6 +40,7 @@ abstract contract TokenAllocation is PauserControl {
         unchecked {
             for (uint256 i = 0; i < numBeneficiaries; ++i) {
                 address beneficiary = _beneficiaries[i];
+                require(beneficiary != address(0), "zero beneficiary");
                 uint256 newAllocation = _allocations[i];
                 uint256 currentAllocation = allocations[beneficiary];
                 if (newAllocation != currentAllocation) {

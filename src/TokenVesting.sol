@@ -53,13 +53,17 @@ contract TokenVesting is TokenAllocation, ReentrancyGuard {
 
     /**
      * @param _token Address of the ERC20 token to be vested
-     * @param _updater Address that can update beneficiary allocations (granted UPDATER_ROLE)
-     * @param _pauser Address that can pause/unpause the contract (granted PAUSER_ROLE)
+     * @param _updater Address that can update beneficiary allocations (granted UPDATER_ROLE if non-zero; zero defers assignment)
+     * @param _pauser Address that can pause/unpause the contract (granted PAUSER_ROLE if non-zero; zero defers assignment)
      */
     constructor(IERC20 _token, address _updater, address _pauser) {
         token = _token;
-        _grantRole(UPDATER_ROLE, _updater);
-        _grantRole(PAUSER_ROLE, _pauser);
+        if (_updater != address(0)) {
+            _grantRole(UPDATER_ROLE, _updater);
+        }
+        if (_pauser != address(0)) {
+            _grantRole(PAUSER_ROLE, _pauser);
+        }
     }
 
     /**
