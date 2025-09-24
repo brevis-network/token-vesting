@@ -65,4 +65,20 @@ abstract contract TokenAllocation is PauserControl {
         allocationLocked = true;
         emit AllocationsLocked();
     }
+
+    /**
+     * @notice Get allocations for multiple beneficiaries
+     * @dev External helper for off-chain tools to fetch multiple allocations in one call,
+     *      reducing RPC round-trips when checking on-chain state against CSV or other
+     *      off-chain datasets.
+     * @param _beneficiaries Array of beneficiary addresses to query
+     * @return amounts Array of allocation amounts corresponding to each beneficiary
+     */
+    function getAllocations(address[] calldata _beneficiaries) external view returns (uint256[] memory amounts) {
+        uint256 n = _beneficiaries.length;
+        amounts = new uint256[](n);
+        for (uint256 i; i < n; ++i) {
+            amounts[i] = allocations[_beneficiaries[i]];
+        }
+    }
 }
