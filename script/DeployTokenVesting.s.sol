@@ -6,7 +6,11 @@ import {TokenVesting} from "../src/TokenVesting.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
- * forge script script/DeployTokenVesting.s.sol:DeployTokenVesting --rpc-url $RPC_URL --private-key env:PRIVATE_KEY --broadcast -vv
+ * forge script script/DeployTokenVesting.s.sol:DeployTokenVesting --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast --verify -vv
+ *
+ * Required environment variables:
+ * - PRIVATE_KEY: Private key of the deployer
+ * - ETHERSCAN_API_KEY: API key for contract verification
  *
  * Env example file: script/.env.example
  * To load vars into your shell before running:
