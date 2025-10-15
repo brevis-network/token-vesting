@@ -31,7 +31,9 @@ contract TokenVestingTest is Test {
     uint256 public vestingStartTime;
 
     event TokensReleased(address indexed beneficiary, uint256 amount);
-    event VestingParametersSet(uint256 initVestedBps, uint256 vestingStartTime, uint256 vestingDuration);
+    event VestingParametersSet(
+        uint256 initVestedBps, uint256 vestingStartTime, uint256 vestingDuration, uint256 vestingGranularity
+    );
     event TokenSet(address indexed token);
     event TokensSwept(address indexed to, uint256 amount);
     event AllocationSet(address indexed beneficiary, uint256 allocation);
@@ -49,8 +51,8 @@ contract TokenVestingTest is Test {
 
         vestingStartTime = block.timestamp + 100; // Start in 100 seconds
 
-        // Set up vesting parameters
-        vesting.setVestingParameters(INIT_VESTED_BPS, vestingStartTime, VESTING_DURATION);
+        // Set up vesting parameters (granularity=1 for test linearity)
+        vesting.setVestingParameters(INIT_VESTED_BPS, vestingStartTime, VESTING_DURATION, 1);
 
         // Transfer tokens to vesting contract
         token.transfer(address(vesting), 100000e18);
@@ -96,9 +98,9 @@ contract TokenVestingTest is Test {
         uint256 newVestingDuration = 730 days;
 
         vm.expectEmit(false, false, false, true);
-        emit VestingParametersSet(newInitVestedBps, newVestingStartTime, newVestingDuration);
+        emit VestingParametersSet(newInitVestedBps, newVestingStartTime, newVestingDuration, 1);
 
-        vesting.setVestingParameters(newInitVestedBps, newVestingStartTime, newVestingDuration);
+        vesting.setVestingParameters(newInitVestedBps, newVestingStartTime, newVestingDuration, 1);
 
         assertEq(vesting.initVestedBps(), newInitVestedBps);
         assertEq(vesting.vestingStartTime(), newVestingStartTime);
@@ -108,7 +110,7 @@ contract TokenVestingTest is Test {
     function test_SetVestingParameters_RevertWhen_NotOwner() public {
         vm.expectRevert();
         vm.prank(beneficiary1);
-        vesting.setVestingParameters(1000, block.timestamp + 100, 365 days);
+        vesting.setVestingParameters(1000, block.timestamp + 100, 365 days, 1);
     }
 
     function test_SetVestingParameters_RevertWhen_AllocationsLocked() public {
@@ -116,22 +118,22 @@ contract TokenVestingTest is Test {
         vesting.lockAllocations();
 
         vm.expectRevert("Allocations locked");
-        vesting.setVestingParameters(1000, block.timestamp + 100, 365 days);
+        vesting.setVestingParameters(1000, block.timestamp + 100, 365 days, 1);
     }
 
     function test_SetVestingParameters_RevertWhen_InvalidBPS() public {
         vm.expectRevert("Initial vested BPS exceeds 100%");
-        vesting.setVestingParameters(10001, block.timestamp + 100, 365 days);
+        vesting.setVestingParameters(10001, block.timestamp + 100, 365 days, 1);
     }
 
     function test_SetVestingParameters_RevertWhen_ZeroStartTime() public {
         vm.expectRevert("Vesting start time must be greater than zero");
-        vesting.setVestingParameters(1000, 0, 365 days);
+        vesting.setVestingParameters(1000, 0, 365 days, 1);
     }
 
     function test_SetVestingParameters_RevertWhen_ZeroDuration() public {
         vm.expectRevert("Vesting duration must be greater than zero");
-        vesting.setVestingParameters(1000, block.timestamp + 100, 0);
+        vesting.setVestingParameters(1000, block.timestamp + 100, 0, 1);
     }
 
     // ============ setToken Tests ============
@@ -216,7 +218,7 @@ contract TokenVestingTest is Test {
 
     function test_VestingSchedule_ZeroInitialVesting() public {
         // Set up contract with 0% initial vesting
-        vesting.setVestingParameters(0, vestingStartTime, VESTING_DURATION);
+        vesting.setVestingParameters(0, vestingStartTime, VESTING_DURATION, 1);
 
         uint256 allocation = 10000e18;
         uint256 atStart = vestingStartTime;
@@ -228,12 +230,72 @@ contract TokenVestingTest is Test {
 
     function test_VestingSchedule_FullInitialVesting() public {
         // Set up contract with 100% initial vesting
-        vesting.setVestingParameters(10000, vestingStartTime, VESTING_DURATION);
+        vesting.setVestingParameters(10000, vestingStartTime, VESTING_DURATION, 1);
 
         uint256 allocation = 10000e18;
         uint256 atStart = vestingStartTime;
 
         assertEq(vesting.vestingSchedule(allocation, atStart), allocation);
+    }
+
+    function test_VestingSchedule_DailyGranularity_Stepwise() public {
+        // Reconfigure vesting to daily steps
+        uint256 g = 86400; // 1 day
+        vesting.setVestingParameters(INIT_VESTED_BPS, vestingStartTime, VESTING_DURATION, g);
+
+        uint256 allocation = 10000e18;
+        uint256 initial = (allocation * INIT_VESTED_BPS) / vesting.BPS_DENOMINATOR();
+        uint256 remaining = allocation - initial;
+        uint256 stepsTotal = (VESTING_DURATION + g - 1) / g; // here equals VESTING_DURATION/g
+
+        // Just after start (within the first day), no additional linear accrual should occur
+        uint256 t1 = vestingStartTime + 1; // 1 second into first day
+        assertEq(vesting.vestingSchedule(allocation, t1), initial);
+
+        // Still within first day boundary, just before completing one step
+        uint256 t2 = vestingStartTime + g - 1;
+        assertEq(vesting.vestingSchedule(allocation, t2), initial);
+
+        // Exactly one day elapsed -> 1 step vested
+        uint256 t3 = vestingStartTime + g;
+        uint256 expectedDay1 = initial + (remaining * 1) / stepsTotal;
+        assertEq(vesting.vestingSchedule(allocation, t3), expectedDay1);
+
+        // After 30 full days -> 30 steps vested
+        uint256 daysElapsed = 30;
+        uint256 t4 = vestingStartTime + daysElapsed * g;
+        uint256 expectedDay30 = initial + (remaining * daysElapsed) / stepsTotal;
+        assertEq(vesting.vestingSchedule(allocation, t4), expectedDay30);
+
+        // At the end of vesting duration -> fully vested
+        uint256 tEnd = vestingStartTime + VESTING_DURATION;
+        assertEq(vesting.vestingSchedule(allocation, tEnd), allocation);
+    }
+
+    function test_VestingSchedule_DailyGranularity_CeilSteps() public {
+        // Use a duration that's not an exact multiple of one day to exercise ceil division
+        uint256 g = 86400; // 1 day
+        uint256 customDuration = 10 days + 12 hours; // 10.5 days -> stepsTotal = 11
+        vesting.setVestingParameters(INIT_VESTED_BPS, vestingStartTime, customDuration, g);
+
+        uint256 allocation = 11000e18;
+        uint256 initial = (allocation * INIT_VESTED_BPS) / vesting.BPS_DENOMINATOR();
+        uint256 remaining = allocation - initial;
+        uint256 stepsTotal = (customDuration + g - 1) / g; // expect 11
+
+        // After 10 full days -> 10/11 of remaining should be vested (plus initial)
+        uint256 tAfter10Days = vestingStartTime + 10 days;
+        uint256 expectedAfter10 = initial + (remaining * 10) / stepsTotal;
+        assertEq(vesting.vestingSchedule(allocation, tAfter10Days), expectedAfter10);
+
+        // Still before completing the last half day, no extra step should accrue
+        uint256 tBeforeEnd = vestingStartTime + 10 days + 11 hours; // still 10 steps elapsed
+        assertEq(vesting.vestingSchedule(allocation, tBeforeEnd), expectedAfter10);
+
+        // At or after the end, fully vested
+        uint256 tEnd = vestingStartTime + customDuration;
+        assertEq(vesting.vestingSchedule(allocation, tEnd), allocation);
+        assertEq(vesting.vestingSchedule(allocation, tEnd + 1), allocation);
     }
 
     function test_VestingSchedule_RevertWhen_ParametersNotSet() public {
