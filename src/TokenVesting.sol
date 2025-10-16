@@ -193,12 +193,24 @@ contract TokenVesting is TokenAllocation, ReentrancyGuard {
 
     /**
      * @notice Returns the signed gap between contract balance and aggregate releasable now
-     * @dev fundingGap = token.balanceOf(this) - (vestingSchedule(totalAllocation, now) - totalReleased).
+     * @dev Equivalent to fundingGap(block.timestamp).
      *      Positive value means surplus (enough to satisfy all immediate releases);
      *      negative means deficit (top-up needed to avoid reverts).
+     * @return gap Signed difference: balance - (aggregate releasable now)
      */
-    function fundingGap() public view returns (int256) {
-        uint256 totalReleasable = vestingSchedule(totalAllocation, block.timestamp) - totalReleased;
+    function fundingGap() public view returns (int256 gap) {
+        return fundingGap(block.timestamp);
+    }
+
+    /**
+     * @notice Returns the signed gap between contract balance and aggregate releasable at a given timestamp
+     * @dev Formula: gap = token.balanceOf(this) - (vestingSchedule(totalAllocation, _timestamp) - totalReleased).
+     *      Positive means surplus at the provided timestamp; negative means deficit.
+     * @param _timestamp The timestamp at which to evaluate aggregate vesting.
+     * @return gap Signed difference: balance - (aggregate releasable at _timestamp)
+     */
+    function fundingGap(uint256 _timestamp) public view returns (int256 gap) {
+        uint256 totalReleasable = vestingSchedule(totalAllocation, _timestamp) - totalReleased;
         uint256 balance = address(token) == address(0) ? 0 : token.balanceOf(address(this));
         return int256(balance) - int256(totalReleasable);
     }
@@ -231,7 +243,6 @@ contract TokenVesting is TokenAllocation, ReentrancyGuard {
 
     /**
      * @notice Set pause state for a specific beneficiary
-     * @dev Convenience function to set arbitrary pause state in one call
      * @param _beneficiary Address of the beneficiary
      * @param _paused New pause state
      */
