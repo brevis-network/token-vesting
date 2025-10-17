@@ -216,6 +216,26 @@ contract TokenVesting is TokenAllocation, ReentrancyGuard {
     }
 
     /**
+     * @notice Retrieves the current vesting parameters
+     * @return _initVestedBps Initial vested percentage in basis points
+     * @return _vestingStartTime Timestamp when vesting begins
+     * @return _vestingDuration Duration of the linear vesting period in seconds
+     * @return _vestingGranularity Step size in seconds for linear accrual
+     */
+    function getVestingParameters()
+        external
+        view
+        returns (
+            uint256 _initVestedBps,
+            uint256 _vestingStartTime,
+            uint256 _vestingDuration,
+            uint256 _vestingGranularity
+        )
+    {
+        return (initVestedBps, vestingStartTime, vestingDuration, vestingGranularity);
+    }
+
+    /**
      * @notice Sets the vesting parameters for the contract
      * @param _initVestedBps Initial vested percentage in basis points (e.g., 1000 = 10%)
      * @param _vestingStartTime Timestamp when vesting begins
