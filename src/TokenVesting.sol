@@ -42,11 +42,14 @@ contract TokenVesting is TokenAllocation, ReentrancyGuard {
     uint256 public initVestedBps; // Initial vested percentage in basis points (e.g., 1000 = 10.00%)
     uint256 public vestingStartTime; // Timestamp when the vesting period starts
     uint256 public vestingDuration; // Duration of the linear vesting period in seconds
+    uint256 public vestingGranularity = 1; // Step size in seconds for linear accrual (e.g., 86400 for daily). Defaults to 1.
 
     mapping(address => bool) public beneficiaryPaused; // When true, the beneficiary cannot release vested tokens
 
     event TokensReleased(address indexed beneficiary, uint256 amount);
-    event VestingParametersSet(uint256 initVestedBps, uint256 vestingStartTime, uint256 vestingDuration);
+    event VestingParametersSet(
+        uint256 initVestedBps, uint256 vestingStartTime, uint256 vestingDuration, uint256 vestingGranularity
+    );
     event TokenSet(address indexed token);
     event TokensSwept(address indexed to, uint256 amount);
     event BeneficiaryPauseSet(address indexed beneficiary, bool paused);
@@ -150,7 +153,7 @@ contract TokenVesting is TokenAllocation, ReentrancyGuard {
             // After the vesting period ends, all tokens are fully vested
             return _totalAmount;
         } else {
-            // During the vesting period: initial vesting + linear progression
+            // During the vesting period: initial vesting + stepwise linear progression
 
             // Calculate the immediate vesting amount (percentage of total)
             uint256 initial = (_totalAmount * initVestedBps) / BPS_DENOMINATOR;
@@ -158,10 +161,15 @@ contract TokenVesting is TokenAllocation, ReentrancyGuard {
             uint256 remaining = _totalAmount - initial;
             // Calculate how much time has passed since vesting started
             uint256 elapsed = _timestamp - vestingStartTime;
-            // Calculate the linear portion vested based on elapsed time
-            // Formula: (remaining_amount * time_elapsed) / total_vesting_duration
-            uint256 linearVested = (remaining * elapsed) / vestingDuration;
-            // Total vested = initial immediate vesting + linear vested amount
+            // Determine steps total using ceil division to ensure final boundary vests all
+            uint256 g = vestingGranularity;
+            uint256 stepsTotal = (vestingDuration + g - 1) / g; // ceil(vestingDuration / g)
+            // Steps elapsed so far (floor)
+            uint256 stepsElapsed = elapsed / g;
+            if (stepsElapsed > stepsTotal) stepsElapsed = stepsTotal;
+            // Linear vested based on completed steps
+            uint256 linearVested = (remaining * stepsElapsed) / stepsTotal;
+            // Total vested = initial immediate vesting + stepwise linear vested amount
             return initial + linearVested;
         }
     }
@@ -185,14 +193,46 @@ contract TokenVesting is TokenAllocation, ReentrancyGuard {
 
     /**
      * @notice Returns the signed gap between contract balance and aggregate releasable now
-     * @dev fundingGap = token.balanceOf(this) - (vestingSchedule(totalAllocation, now) - totalReleased).
+     * @dev Equivalent to fundingGap(block.timestamp).
      *      Positive value means surplus (enough to satisfy all immediate releases);
      *      negative means deficit (top-up needed to avoid reverts).
+     * @return gap Signed difference: balance - (aggregate releasable now)
      */
-    function fundingGap() public view returns (int256) {
-        uint256 totalReleasable = vestingSchedule(totalAllocation, block.timestamp) - totalReleased;
+    function fundingGap() public view returns (int256 gap) {
+        return fundingGap(block.timestamp);
+    }
+
+    /**
+     * @notice Returns the signed gap between contract balance and aggregate releasable at a given timestamp
+     * @dev Formula: gap = token.balanceOf(this) - (vestingSchedule(totalAllocation, _timestamp) - totalReleased).
+     *      Positive means surplus at the provided timestamp; negative means deficit.
+     * @param _timestamp The timestamp at which to evaluate aggregate vesting.
+     * @return gap Signed difference: balance - (aggregate releasable at _timestamp)
+     */
+    function fundingGap(uint256 _timestamp) public view returns (int256 gap) {
+        uint256 totalReleasable = vestingSchedule(totalAllocation, _timestamp) - totalReleased;
         uint256 balance = address(token) == address(0) ? 0 : token.balanceOf(address(this));
         return int256(balance) - int256(totalReleasable);
+    }
+
+    /**
+     * @notice Retrieves the current vesting parameters
+     * @return _initVestedBps Initial vested percentage in basis points
+     * @return _vestingStartTime Timestamp when vesting begins
+     * @return _vestingDuration Duration of the linear vesting period in seconds
+     * @return _vestingGranularity Step size in seconds for linear accrual
+     */
+    function getVestingParameters()
+        external
+        view
+        returns (
+            uint256 _initVestedBps,
+            uint256 _vestingStartTime,
+            uint256 _vestingDuration,
+            uint256 _vestingGranularity
+        )
+    {
+        return (initVestedBps, vestingStartTime, vestingDuration, vestingGranularity);
     }
 
     /**
@@ -200,25 +240,29 @@ contract TokenVesting is TokenAllocation, ReentrancyGuard {
      * @param _initVestedBps Initial vested percentage in basis points (e.g., 1000 = 10%)
      * @param _vestingStartTime Timestamp when vesting begins
      * @param _vestingDuration Duration of the linear vesting period in seconds
+     * @param _granularitySeconds Step size in seconds for linear accrual (e.g., 86400 for daily)
      */
-    function setVestingParameters(uint256 _initVestedBps, uint256 _vestingStartTime, uint256 _vestingDuration)
-        external
-        onlyOwner
-    {
+    function setVestingParameters(
+        uint256 _initVestedBps,
+        uint256 _vestingStartTime,
+        uint256 _vestingDuration,
+        uint256 _granularitySeconds
+    ) external onlyOwner {
         require(!allocationLocked, "Allocations locked");
         require(_initVestedBps <= BPS_DENOMINATOR, "Initial vested BPS exceeds 100%");
         require(_vestingStartTime > 0, "Vesting start time must be greater than zero");
         require(_vestingDuration > 0, "Vesting duration must be greater than zero");
+        require(_granularitySeconds > 0, "Granularity must be greater than zero");
 
         initVestedBps = _initVestedBps;
         vestingStartTime = _vestingStartTime;
         vestingDuration = _vestingDuration;
-        emit VestingParametersSet(_initVestedBps, _vestingStartTime, _vestingDuration);
+        vestingGranularity = _granularitySeconds;
+        emit VestingParametersSet(_initVestedBps, _vestingStartTime, _vestingDuration, _granularitySeconds);
     }
 
     /**
      * @notice Set pause state for a specific beneficiary
-     * @dev Convenience function to set arbitrary pause state in one call
      * @param _beneficiary Address of the beneficiary
      * @param _paused New pause state
      */

@@ -40,7 +40,8 @@ contract IntegrationTest is Test {
         vesting = new TokenVesting(IERC20(token), updater, pauser);
 
         vestingStartTime = block.timestamp + 1 days;
-        vesting.setVestingParameters(INIT_VESTED_BPS, vestingStartTime, VESTING_DURATION);
+        // Use 1-second granularity in tests to approximate continuous linearity
+        vesting.setVestingParameters(INIT_VESTED_BPS, vestingStartTime, VESTING_DURATION, 1);
 
         // Setup test beneficiaries and allocations
         _setupTestBeneficiaries();
@@ -192,7 +193,7 @@ contract IntegrationTest is Test {
 
         // Create fresh vesting contract to avoid confusion with existing allocations
         TokenVesting freshVesting = new TokenVesting(IERC20(token), updater, pauser);
-        freshVesting.setVestingParameters(INIT_VESTED_BPS, vestingStartTime, VESTING_DURATION);
+        freshVesting.setVestingParameters(INIT_VESTED_BPS, vestingStartTime, VESTING_DURATION, 1);
 
         // Need tokens for this test
         uint256 neededTokens = numBeneficiaries * 100e18;

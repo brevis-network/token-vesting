@@ -11,18 +11,18 @@ script/     Deployment scripts and `.env.example`
 ```
 
 ## Vesting Model
-Each beneficiary follows the same schedule: at the vesting start time (`T0`), a fixed initial percentage (`P`) of their allocation (`A`) unlocks immediately, and the remainder vests linearly over the configured duration (`D`). 
+Each beneficiary follows the same schedule: at the vesting start time (`T0`), a fixed initial percentage (`P`) of their allocation (`A`) unlocks immediately, and the remainder vests in linear steps over the configured duration (`D`). The step size is controlled by vesting granularity (`G`) in seconds (e.g., `86400` for daily steps).
 
 Vested amount `V(t)` at current time `t`:
 - `V(t) = 0` for `t < T0`
 - `V(t) = A` for `t >= T0 + D`
-- Otherwise `V(t) = A * P + A * (1 - P) * (t - T0) / D`
+- Otherwise `V(t) = A * P + A * (1 - P) * stepsElapsed / stepsTotal`, where `stepsTotal = ceil(D / G)` and `stepsElapsed = floor((t - T0) / G)`.
 
 `releasable = V(t) - released[beneficiary]`.
 
 ## Operational Flow
 1. Deploy contract with token, updater, pauser (optional zero addresses allowed, then set later by owner).
-2. (Owner) `setVestingParameters(initBps, startTime, duration)` – must be before locking.
+2. (Owner) `setVestingParameters(initBps, startTime, duration, granularitySeconds)`. 
 3. (Updater) `setAllocations([...])` – batch set or update allocations while not locked.
 4. (Owner or Updater) `lockAllocations()` – freezes allocations and parameters.
 5. Fund the contract. Use `fundingGap()` to check surplus/deficit vs aggregate releasable.
