@@ -7,6 +7,10 @@ libs = ["lib"]
 optimizer = true
 optimizer_runs = 200
 
+# Permit Foundry cheatcodes (vm.readFile, etc.) to access JSON config files
+# Add any other folders you want scripts/tests to read from.
+fs_permissions = [{ access = "read", path = "./deployments" }]
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
 
 [lint]

@@ -1,0 +1,10 @@
+{
+    "vestingToken": "",
+    "vestingUpdater": "",
+    "vestingPauser": "",
+    "initBps": 4000,
+    "startTime": 1760587200,
+    "duration": 259200,
+    "granularitySeconds": 86400,
+    "ownerVoters": []
+}

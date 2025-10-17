@@ -17,11 +17,8 @@ contract OwnerCouncil is SimpleAdminCouncil {
     event SetVestingParametersProposed(
         uint256 proposalId, uint256 initBps, uint256 startTime, uint256 duration, uint256 granularitySeconds
     );
-
     event SetTokenProposed(uint256 proposalId, address newToken);
-
     event RecoverErc20Proposed(uint256 proposalId, address token, address to, uint256 amount);
-
     event SweepTokensProposed(uint256 proposalId, address to, uint256 amount);
 
     // Propose updating vesting parameters on a TokenVesting contract
