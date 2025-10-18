@@ -32,7 +32,7 @@ Vested amount `V(t)` at current time `t`:
 ## Security Considerations
 
 ### Trust model and roles
-- `owner` is a super-admin and must be tightly secured. Use a multisig or [on-chain governance](https://github.com/brevis-network/security-contracts/tree/main/src/governance).
+- `owner` is a super-admin and must be tightly secured. We recommend using the built-in OwnerCouncil (see `src/OwnerCouncil.sol`) for on-chain governance, or a multisig.
 - `UPDATER_ROLE` updates allocations until locked; `PAUSER_ROLE` pauses operations (in vesting: can pause globally and per-beneficiary releases). Key management follows standard operational practice.
 
 ### Allocation locking and mutability
