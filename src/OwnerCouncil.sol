@@ -3,14 +3,13 @@ pragma solidity ^0.8.20;
 
 import "@security/governance/simple-council/SimpleAdminCouncil.sol";
 
-// Minimal interface for TokenVesting owner-only functions to avoid heavy imports
-interface ITokenVesting {
-    function setVestingParameters(uint256, uint256, uint256, uint256) external;
-    function setToken(address) external;
-    function recoverERC20(address, address, uint256) external;
-    function sweepTokens(address, uint256) external;
-}
-
+/**
+ * @title OwnerCouncil
+ * @notice SimpleAdminCouncil-based governor that can execute arbitrary external calls approved by voters.
+ * @dev In this repo its primary role is to hold ownership of TokenVesting and execute its owner-only actions
+ *      (setVestingParameters, setToken, recoverERC20, sweepTokens) and manage roles (UPDATER_ROLE, PAUSER_ROLE).
+ *      Configure voters, requiredYesVotes, and proposal activePeriod in the constructor.
+ */
 contract OwnerCouncil is SimpleAdminCouncil {
     // Initializes the council with the provided voter addresses, required yes votes, and proposal active period
     constructor(address[] memory _voters, uint256 _requiredYesVotes, uint256 _activePeriod)
@@ -62,4 +61,12 @@ contract OwnerCouncil is SimpleAdminCouncil {
         proposalId = createProposal(_target, data);
         emit SweepTokensProposed(proposalId, _to, _amount);
     }
+}
+
+// Minimal interface for TokenVesting owner-only functions to avoid heavy imports
+interface ITokenVesting {
+    function setVestingParameters(uint256, uint256, uint256, uint256) external;
+    function setToken(address) external;
+    function recoverERC20(address, address, uint256) external;
+    function sweepTokens(address, uint256) external;
 }
