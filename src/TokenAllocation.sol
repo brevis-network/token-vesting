@@ -59,8 +59,7 @@ abstract contract TokenAllocation is PauserControl {
     /**
      * @notice Locks allocations to prevent further updates
      */
-    function lockAllocations() external {
-        require(hasRole(UPDATER_ROLE, msg.sender) || owner() == msg.sender, "Not authorized");
+    function lockAllocations() external onlyOwner {
         require(!allocationLocked, "Allocations already locked");
         allocationLocked = true;
         emit AllocationsLocked();

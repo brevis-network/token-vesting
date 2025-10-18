@@ -113,7 +113,7 @@ contract IntegrationTest is Test {
         vesting.setAllocations(sortedBeneficiaries, sortedAllocations);
 
         // Step 2: Lock allocations
-        vm.prank(updater);
+        vm.prank(owner);
         vesting.lockAllocations();
 
         // Step 3: Test release at vesting start (initial vesting)
@@ -232,7 +232,7 @@ contract IntegrationTest is Test {
         assertEq(vesting.allocations(sortedBeneficiaries[0]), updateAllocation[0]);
 
         // Lock and test vesting
-        vm.prank(updater);
+        vm.prank(owner);
         vesting.lockAllocations();
 
         vm.warp(vestingStartTime + VESTING_DURATION);
@@ -250,7 +250,7 @@ contract IntegrationTest is Test {
         vm.prank(updater);
         vesting.setAllocations(sortedBeneficiaries, sortedAllocations);
 
-        vm.prank(updater);
+        vm.prank(owner);
         vesting.lockAllocations();
 
         // Pause the contract
@@ -279,7 +279,7 @@ contract IntegrationTest is Test {
         vm.prank(updater);
         vesting.setAllocations(sortedBeneficiaries, sortedAllocations);
 
-        vm.prank(updater);
+        vm.prank(owner);
         vesting.lockAllocations();
 
         // Add extra tokens to contract

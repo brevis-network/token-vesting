@@ -121,7 +121,9 @@ contract OwnerCouncilTest is Test {
         as_[0] = 100e18;
         vm.prank(updater);
         vesting.setAllocations(bs, as_);
-        vm.prank(updater);
+        // As owner is the council, lock via council by temporarily transferring ownership for setup is already done.
+        // Call lockAllocations as owner by prank to council address.
+        vm.prank(address(council));
         vesting.lockAllocations();
 
         // Fund vesting with vesting token

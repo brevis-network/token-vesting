@@ -131,7 +131,7 @@ contract TokenAllocationTest is Test {
     }
 
     function test_SetBeneficiaryAllocations_RevertWhen_AllocationsLocked() public {
-        vm.prank(updater);
+        vm.prank(owner);
         allocation.lockAllocations();
 
         address[] memory beneficiaries = new address[](1);
@@ -175,34 +175,23 @@ contract TokenAllocationTest is Test {
     function test_LockAllocations_Success() public {
         vm.expectEmit(false, false, false, true);
         emit AllocationsLocked();
-
-        // Test updater can lock
-        vm.prank(updater);
-        allocation.lockAllocations();
-        assertTrue(allocation.allocationLocked());
-
-        // Reset and test owner can lock
-        allocation = new TestableTokenAllocation(updater, pauser);
-        vm.expectEmit(false, false, false, true);
-        emit AllocationsLocked();
-
         vm.prank(owner);
         allocation.lockAllocations();
         assertTrue(allocation.allocationLocked());
     }
 
     function test_LockAllocations_RevertWhen_NotAuthorized() public {
-        vm.expectRevert("Not authorized");
-        vm.prank(beneficiary1);
+        vm.expectRevert();
+        vm.prank(beneficiary1); // non-owner
         allocation.lockAllocations();
     }
 
     function test_LockAllocations_RevertWhen_AlreadyLocked() public {
-        vm.prank(updater);
+        vm.prank(owner);
         allocation.lockAllocations();
 
         vm.expectRevert("Allocations already locked");
-        vm.prank(updater);
+        vm.prank(owner);
         allocation.lockAllocations();
     }
 
