@@ -6,9 +6,9 @@ import "@security/governance/simple-council/SimpleAdminCouncil.sol";
 /**
  * @title OwnerCouncil
  * @notice SimpleAdminCouncil-based governor that can execute arbitrary external calls approved by voters.
- * @dev In this repo its primary role is to hold ownership of TokenVesting and execute its owner-only actions
+ * @dev Its primary purpose is to hold ownership of a TokenVesting contract and execute its owner-only actions
  *      (setVestingParameters, setToken, recoverERC20, sweepTokens) and manage roles (UPDATER_ROLE, PAUSER_ROLE).
- *      Configure voters, requiredYesVotes, and proposal activePeriod in the constructor.
+ *      Configure voters, number of required yes votes, and proposal active period in the constructor.
  */
 contract OwnerCouncil is SimpleAdminCouncil {
     // Initializes the council with the provided voter addresses, required yes votes, and proposal active period
@@ -45,7 +45,7 @@ contract OwnerCouncil is SimpleAdminCouncil {
         emit SetTokenProposed(proposalId, _newToken);
     }
 
-    // Propose recovering any ERC20 tokens from TokenVesting
+    // Propose recovering any ERC20 tokens from TokenVesting contract
     function proposeRecoverERC20(address _target, address _erc20, address _to, uint256 _amount)
         external
         returns (uint256 proposalId)
@@ -55,7 +55,7 @@ contract OwnerCouncil is SimpleAdminCouncil {
         emit RecoverErc20Proposed(proposalId, _erc20, _to, _amount);
     }
 
-    // Propose sweeping vesting tokens while the vesting contract is paused
+    // Propose sweeping vesting tokens while the TokenVesting contract is paused
     function proposeSweepTokens(address _target, address _to, uint256 _amount) external returns (uint256 proposalId) {
         bytes memory data = abi.encodeWithSelector(ITokenVesting.sweepTokens.selector, _to, _amount);
         proposalId = createProposal(_target, data);
