@@ -157,4 +157,29 @@ contract OwnerCouncilTest is Test {
         vm.expectRevert();
         council.executeProposal(pid, address(vesting), data);
     }
+
+    function test_Propose_LockAllocations_and_Execute() public {
+        // Prepare a simple allocation
+        address[] memory bs = new address[](1);
+        uint256[] memory as_ = new uint256[](1);
+        bs[0] = makeAddr("bob");
+        as_[0] = 123e18;
+        vm.prank(updater);
+        vesting.setAllocations(bs, as_);
+
+        // Propose and execute lockAllocations via council
+        bytes memory data = abi.encodeWithSelector(ITokenVesting.lockAllocations.selector);
+        vm.prank(voter1);
+        uint256 pid = council.proposeLockAllocations(address(vesting));
+        _reachQuorumAndExecute(pid, data);
+
+        // Allocations should be locked
+        assertTrue(vesting.allocationLocked());
+
+        // Further updates should revert
+        as_[0] = 456e18;
+        vm.prank(updater);
+        vm.expectRevert(bytes("Allocations are locked"));
+        vesting.setAllocations(bs, as_);
+    }
 }

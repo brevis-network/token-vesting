@@ -7,8 +7,7 @@ import "@security/governance/simple-council/SimpleAdminCouncil.sol";
  * @title OwnerCouncil
  * @notice SimpleAdminCouncil-based governor that can execute arbitrary external calls approved by voters.
  * @dev Its primary purpose is to hold ownership of a TokenVesting contract and execute its owner-only actions
- *      (setVestingParameters, setToken, recoverERC20, sweepTokens) and manage roles (UPDATER_ROLE, PAUSER_ROLE).
- *      Configure voters, number of required yes votes, and proposal active period in the constructor.
+ *      and manage roles. Configure voters, required yes votes, and proposal active period in the constructor.
  */
 contract OwnerCouncil is SimpleAdminCouncil {
     // Initializes the council with the provided voter addresses, required yes votes, and proposal active period
@@ -22,6 +21,7 @@ contract OwnerCouncil is SimpleAdminCouncil {
     event SetTokenProposed(uint256 proposalId, address newToken);
     event RecoverErc20Proposed(uint256 proposalId, address token, address to, uint256 amount);
     event SweepTokensProposed(uint256 proposalId, address to, uint256 amount);
+    event LockAllocationsProposed(uint256 proposalId);
 
     // Propose updating vesting parameters on a TokenVesting contract
     function proposeSetVestingParameters(
@@ -61,12 +61,20 @@ contract OwnerCouncil is SimpleAdminCouncil {
         proposalId = createProposal(_target, data);
         emit SweepTokensProposed(proposalId, _to, _amount);
     }
+
+    // Propose locking allocations on a TokenAllocation contract
+    function proposeLockAllocations(address _target) external returns (uint256 proposalId) {
+        bytes memory data = abi.encodeWithSelector(ITokenVesting.lockAllocations.selector);
+        proposalId = createProposal(_target, data);
+        emit LockAllocationsProposed(proposalId);
+    }
 }
 
 // Minimal interface for TokenVesting owner-only functions to avoid heavy imports
 interface ITokenVesting {
     function setVestingParameters(uint256, uint256, uint256, uint256) external;
     function setToken(address) external;
+    function lockAllocations() external;
     function recoverERC20(address, address, uint256) external;
     function sweepTokens(address, uint256) external;
 }
