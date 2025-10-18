@@ -86,7 +86,7 @@ contract TokenVestingTest is Test {
         vm.prank(updater);
         vesting.setAllocations(beneficiaries, allocations);
 
-        vm.prank(updater);
+        vm.prank(owner);
         vesting.lockAllocations();
     }
 
@@ -114,7 +114,7 @@ contract TokenVestingTest is Test {
     }
 
     function test_SetVestingParameters_RevertWhen_AllocationsLocked() public {
-        vm.prank(updater);
+        vm.prank(owner);
         vesting.lockAllocations();
 
         vm.expectRevert("Allocations locked");
@@ -170,7 +170,7 @@ contract TokenVestingTest is Test {
         TokenVesting newVesting = new TokenVesting(IERC20(address(0)), updater, pauser);
         MockToken newToken = new MockToken();
 
-        vm.prank(updater);
+        vm.prank(owner);
         newVesting.lockAllocations();
 
         vm.expectRevert("Allocations locked");
