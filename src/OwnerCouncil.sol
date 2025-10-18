@@ -12,7 +12,10 @@ interface ITokenVesting {
 }
 
 contract OwnerCouncil is SimpleAdminCouncil {
-    constructor(address[] memory _voters) SimpleAdminCouncil(_voters) {}
+    // Initializes the council with the provided voter addresses, required yes votes, and proposal active period
+    constructor(address[] memory _voters, uint256 _requiredYesVotes, uint256 _activePeriod)
+        SimpleAdminCouncil(_voters, _requiredYesVotes, _activePeriod)
+    {}
 
     event SetVestingParametersProposed(
         uint256 proposalId, uint256 initBps, uint256 startTime, uint256 duration, uint256 granularitySeconds

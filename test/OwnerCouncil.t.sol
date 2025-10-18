@@ -40,7 +40,8 @@ contract OwnerCouncilTest is Test {
         voters[0] = voter1;
         voters[1] = voter2;
         voters[2] = voter3;
-        council = new OwnerCouncil(voters);
+        // Require 2 yes votes and 1-day active period
+        council = new OwnerCouncil(voters, 2, 86400);
 
         token = new MockToken();
         vesting = new TokenVesting(IERC20(address(token)), updater, pauser);

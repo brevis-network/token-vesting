@@ -6,5 +6,7 @@
     "startTime": 1760587200,
     "duration": 259200,
     "granularitySeconds": 86400,
-    "ownerVoters": []
+    "ownerVoters": [],
+    "ownerRequiredYesVotes": 2,
+    "ownerActivePeriod": 86400
 }
