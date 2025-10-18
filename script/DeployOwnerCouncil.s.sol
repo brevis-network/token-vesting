@@ -19,7 +19,11 @@ import {OwnerCouncil} from "../src/OwnerCouncil.sol";
  *
  * JSON fields (see script/example_config.json):
  *   {
- *     "ownerVoters": ["0x...","0x...", "0x..."]   // one or more addresses
+ *     "owner": {
+ *       "voters": ["0x...","0x...", "0x..."],   // one or more addresses
+ *       "requiredYesVotes": 2,                      // required yes votes to pass
+ *       "activePeriod": 86400                       // seconds a proposal stays active
+ *     }
  *   }
  *
  * Deploys an OwnerCouncil using voter addresses from a JSON config.
@@ -36,10 +40,12 @@ contract DeployOwnerCouncil is Script {
         string memory configPath = vm.envString("VESTING_CONFIG");
         string memory json = vm.readFile(configPath);
 
-        address[] memory voters = json.readAddressArray("$.ownerVoters");
+        address[] memory voters = json.readAddressArray("$.owner.voters");
+        uint256 requiredYesVotes = json.readUint("$.owner.requiredYesVotes");
+        uint256 activePeriod = json.readUint("$.owner.activePeriod");
 
         vm.startBroadcast(pk);
-        OwnerCouncil council = new OwnerCouncil(voters);
+        OwnerCouncil council = new OwnerCouncil(voters, requiredYesVotes, activePeriod);
         vm.stopBroadcast();
 
         console2.log("OwnerCouncil deployed:", address(council));

@@ -1,10 +1,16 @@
 {
-    "vestingToken": "",
-    "vestingUpdater": "",
-    "vestingPauser": "",
-    "initBps": 4000,
-    "startTime": 1760587200,
-    "duration": 259200,
-    "granularitySeconds": 86400,
-    "ownerVoters": []
+    "vesting": {
+        "token": "",
+        "updater": "",
+        "pauser": "",
+        "initBps": 4000,
+        "startTime": 1760587200,
+        "duration": 259200,
+        "granularitySeconds": 86400
+    },
+    "owner": {
+        "voters": [],
+        "requiredYesVotes": 2,
+        "activePeriod": 86400
+    }
 }
