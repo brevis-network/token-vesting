@@ -10,3 +10,5 @@ broadcast/
 
 # Local environment file
 .env
+
+deployments/
