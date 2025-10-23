@@ -20,21 +20,22 @@ Vested amount `V(t)` at current time `t`:
 
 `releasable = V(t) - released[beneficiary]`.
 
-## Operational Flow
-1. Deploy contract with token, updater, pauser (optional zero addresses allowed, then set later by owner).
+## Operation Flow
+1. Deploy contract with token, updater, and pauser.
 2. (Owner) `setVestingParameters(initBps, startTime, duration, granularitySeconds)`.
-3. (Updater) `setAllocations([...])` – batch set or update allocations while not locked.
-4. (Owner) If updater/pauser are less trusted: review allocations and revoke `UPDATER_ROLE` from non-owners. `pause()` can serve as a temporary guard.
+3. (Updater/Pauser)
+    1) `setAllocations([...])` – batch-set or update allocations while not locked.
+    2) `pause()` during review to prevent unintended changes.
+    3) Renounce `UPDATER_ROLE` once allocations are confirmed.
+4. (Team) Carefully review allocations.
 5. (Owner) `lockAllocations()` – freezes allocations and parameters.
-6. Fund the contract. Use `fundingGap()` to check surplus/deficit vs aggregate releasable.
-7. Beneficiaries call `release()` (or updater calls `release(beneficiary)`) after `startTime` as vesting accrues.
-8. View helpers: `beneficiaryVestingInfo(beneficiary)`, `releasable(beneficiary)`, `fundingGap()`.
+6. Beneficiaries call `release()` (or updater calls `release(beneficiary)`) after `startTime` as vesting accrues.
 
 ## Security Considerations
 
 ### Trust model and roles
 - `owner` is a super-admin and must be tightly secured. We recommend using the built-in OwnerCouncil (see `src/OwnerCouncil.sol`) for on-chain governance, or a multisig.
-- `UPDATER_ROLE` updates allocations until locked; `PAUSER_ROLE` can pause operations (global and per-beneficiary in vesting). Key management follows standard operational practice. See the Operational Flow for the recommended sequence (review, revoke `UPDATER_ROLE` if needed, then lock).
+- `UPDATER_ROLE` updates allocations until locked; `PAUSER_ROLE` can pause operations (global and per-beneficiary in vesting). Key management follows standard operational practice. See the Operation Flow for the recommended sequence (review, revoke `UPDATER_ROLE` if needed, then lock).
 
 ### Allocation locking and mutability
 - Allocations and vesting parameters are immutable after `allocationLocked` is set (cannot be unset).
