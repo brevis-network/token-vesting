@@ -12,5 +12,8 @@
         "voters": [],
         "requiredYesVotes": 2,
         "activePeriod": 86400
+    },
+    "viewer": {
+        "vesting": ""
     }
 }
